@@ -3,6 +3,11 @@
 #include "user/user.h"
 #include "kernel/fs.h"
 
+// forward declarations for regex matcher from grep.c
+int match(char *re, char *text);
+int matchhere(char *re, char *text);
+int matchstar(int c, char *re, char *text);
+
 void
 find(char *path, char *target)
 {
@@ -10,7 +15,6 @@ find(char *path, char *target)
   int fd;
   struct dirent de;
   struct stat st;
-
 
   if ((fd = open(path, 0)) < 0) {
     fprintf(2, "find: cannot open %s\n", path);
@@ -23,26 +27,24 @@ find(char *path, char *target)
     return;
   }
 
-
   if (st.type == T_FILE) {
-
+    // get just the last component of path
     char *last = path;
     for (char *q = path; *q; q++) {
       if (*q == '/')
-        last = q+1;
+        last = q + 1;
     }
-    if (strcmp(last, target) == 0) {
+    if (match(target, last))
       printf("%s\n", path);
-    }
   }
 
   if (st.type == T_DIR) {
-
     if (strlen(path) + 1 + DIRSIZ + 1 > sizeof buf) {
       printf("find: path too long\n");
       close(fd);
       return;
     }
+
     strcpy(buf, path);
     p = buf + strlen(buf);
     *p++ = '/';
@@ -50,14 +52,11 @@ find(char *path, char *target)
     while (read(fd, &de, sizeof(de)) == sizeof(de)) {
       if (de.inum == 0)
         continue;
-
-
       if (strcmp(de.name, ".") == 0 || strcmp(de.name, "..") == 0)
         continue;
 
       memmove(p, de.name, DIRSIZ);
       p[DIRSIZ] = 0;
-
 
       if (stat(buf, &st) < 0) {
         printf("find: cannot stat %s\n", buf);
@@ -67,9 +66,8 @@ find(char *path, char *target)
       if (st.type == T_DIR) {
         find(buf, target);
       } else {
-        if (strcmp(de.name, target) == 0) {
+        if (match(target, de.name))  // match filename here
           printf("%s\n", buf);
-        }
       }
     }
   }
@@ -84,7 +82,44 @@ main(int argc, char *argv[])
     fprintf(2, "Usage: find <path> <name>\n");
     exit(1);
   }
-
   find(argv[1], argv[2]);
   exit(0);
 }
+
+// primitive regular expression matcher from grep.c
+int
+match(char *re, char *text)
+{
+  if (re[0] == '^')
+    return matchhere(re + 1, text);
+  do {  // must look even if string is empty
+    if (matchhere(re, text))
+      return 1;
+  } while (*text++ != '\0');
+  return 0;
+}
+
+int
+matchhere(char *re, char *text)
+{
+  if (re[0] == '\0')
+    return 1;
+  if (re[1] == '*')
+    return matchstar(re[0], re + 2, text);
+  if (re[0] == '$' && re[1] == '\0')
+    return *text == '\0';
+  if (*text != '\0' && (re[0] == '.' || re[0] == *text))
+    return matchhere(re + 1, text + 1);
+  return 0;
+}
+
+int
+matchstar(int c, char *re, char *text)
+{
+  do {  // a * matches zero or more instances
+    if (matchhere(re, text))
+      return 1;
+  } while (*text != '\0' && (*text == c || c == '.') && text++);
+  return 0;
+}
+
