@@ -8,25 +8,23 @@ void
 runexec(char *cmdargs[], int ncmd, char *file)
 {
   char *argv[MAXARG];
-  for (int i = 0; i < ncmd; i++) {
+  int i;
+  for (i = 0; i < ncmd; i++)
     argv[i] = cmdargs[i];
-  }
-  argv[ncmd] = file;
-  argv[ncmd+1] = 0;
-
+  argv[i++] = file;
+  argv[i] = 0;
   if (fork() == 0) {
     exec(argv[0], argv);
     fprintf(2, "find: exec %s failed\n", argv[0]);
     exit(1);
-  } else {
-    wait(0);
   }
+  wait(0);
 }
 
 void
 find(char *path, char *target, char *cmdargs[], int ncmd)
-{
-  char buf[512], *p;
+{ 
+char buf[512], *p;
   int fd;
   struct dirent de;
   struct stat st;
@@ -43,13 +41,14 @@ find(char *path, char *target, char *cmdargs[], int ncmd)
   }
 
   if (st.type == T_FILE) {
+    // last component
     char *last = path;
-    for (char *q = path; *q; q++) {
+    for (char *q = path; *q; q++)
       if (*q == '/')
         last = q+1;
-    }
-    if (strcmp(last, target) == 0) {
-      if (ncmd > 0)
+
+    if (strcmp(last, target) == 0) { 
+if (ncmd > 0)
         runexec(cmdargs, ncmd, path);
       else
         printf("%s\n", path);
@@ -69,13 +68,12 @@ find(char *path, char *target, char *cmdargs[], int ncmd)
     while (read(fd, &de, sizeof(de)) == sizeof(de)) {
       if (de.inum == 0)
         continue;
-      if (strcmp(de.name, ".") == 0 || strcmp(de.name, "..") == 0)
+      if (!strcmp(de.name, ".") || !strcmp(de.name, ".."))
         continue;
 
       memmove(p, de.name, DIRSIZ);
-      p[DIRSIZ] = 0;
-
-      if (stat(buf, &st) < 0) {
+      p[DIRSIZ] = 0; 
+ if (stat(buf, &st) < 0) {
         printf("find: cannot stat %s\n", buf);
         continue;
       }
@@ -99,18 +97,18 @@ find(char *path, char *target, char *cmdargs[], int ncmd)
 int
 main(int argc, char *argv[])
 {
-  if (argc < 3) {
-    fprintf(2, "Usage: find <path> <name> [-exec <cmd> ...]\n");
+  if (argc < 3) { 
+ fprintf(2, "Usage: find <path> <name> [-exec <cmd> ...]\n");
     exit(1);
   }
 
   char *cmdargs[MAXARG];
   int ncmd = 0;
 
+  // parse -exec if present
   if (argc > 3 && strcmp(argv[3], "-exec") == 0) {
-    for (int i = 4; i < argc && i-4 < MAXARG-2; i++) {
+    for (int i = 4; i < argc && ncmd < MAXARG-1; i++)
       cmdargs[ncmd++] = argv[i];
-    }
     cmdargs[ncmd] = 0;
   }
 
