@@ -1,7 +1,4 @@
 // user/sh.c
-// A simple xv6 shell (fixed/cleaned version).
-// Features: prompt (only for interactive stdin), cd, wait builtin,
-// Simple shell for xv6 with small improvements.
 
 #include "kernel/types.h"
 #include "kernel/stat.h"
