@@ -1,0 +1,11 @@
+Speeding up getpid() in xv6:
+
+1. Allocate a read-only shared page at USYSCALL for each process when it is created.
+2. Map this page in the process page table using permissions PTE_U | PTE_R so that userspace can read but not write.
+3. Store the PID of the process in a struct usyscall at the start of the page.
+4. Userspace function ugetpid() reads the PID directly from this page, avoiding a kernel trap and speeding up the system call.
+5. Other system calls that could be made faster using this shared page include:
+   - getppid(): store the parent PID in the shared page.
+   - getuid() / geteuid(): store user IDs in the shared page.
+   - uptime(): store a counter of system uptime.
+   - Any read-only, per-process or per-system information that does not change frequently.
