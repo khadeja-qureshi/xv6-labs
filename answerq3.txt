@@ -1,0 +1,21 @@
+The TRAMPOLINE page is mapped at a fixed virtual address and contains assembly code to switch between user and kernel mode (usertrap / kernelvec).
+
+Alternative approaches:
+
+Inline the trampoline code in the kernel
+
+Instead of a fixed mapped page, copy the trampoline code into each kernel stack or use a single shared code region.
+
+Pros: Fewer special mappings.
+
+Cons:
+
+The trampoline needs to be at a fixed virtual address for stvec (trap vector) to work in RISC-V.
+
+Harder to maintain and less safe, since the same code must be accessible from all contexts.
+
+Duplicate trampoline code per kernel stack
+
+Could place a small trampoline in each kernel stack instead of a global page.
+
+Cons: Increases memory usage slightly and makes maintenance more complex.

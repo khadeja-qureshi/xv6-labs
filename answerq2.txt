@@ -1,0 +1,23 @@
+Currently, xv6 maps a TRAPFRAME page for each process at a fixed virtual address so that the kernel can save and restore user registers during a trap or system call.
+
+Alternative approaches:
+
+Push registers directly onto the kernel stack
+
+Instead of storing user registers in a dedicated page, uservec could push the 32 registers directly onto the kernel stack.
+
+Pros: No need for a per-process TRAPFRAME mapping.
+
+Cons:
+
+The kernel stack is limited in size (often 2 pages), so deep recursion or nested traps could overflow.
+
+Accessing specific saved registers by address becomes less convenient.
+
+Store registers in the proc structure
+
+Each struct proc could have an array to save registers.
+
+Pros: Centralized and avoids mapping a full page.
+
+Cons: The size of struct proc grows, and for context switching, it may be less flexible than a page that the hardware can reference.
