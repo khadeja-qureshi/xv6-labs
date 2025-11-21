@@ -1,0 +1,23 @@
+Page Table Entries for pgtbltest:
+
+VA            PA          Perm  Explanation
+0x0           0x87F22000  0x5B  User code page; readable, executable, user-accessible, valid; not writable
+0x1000        0x87F1F000  0x5B  User code/data page; readable, executable, user-accessible, valid; not writable
+0x2000        0x87F1E000  0x17  User data page; readable, writable, user-accessible
+0x3000        0x87F1D000  0x7   User data/stack page; readable, writable
+0x4000        0x87F1C000  0xD7  User data/code page; readable, writable, executable, user-accessible
+0x5000        0x0         0x0   Unmapped page (hole in virtual memory)
+0x6000        0x0         0x0   Unmapped page
+0x7000        0x0         0x0   Unmapped page
+0x8000        0x0         0x0   Unmapped page
+0x9000        0x0         0x0   Unmapped page
+0x3FFFFF6000  0x0         0x0   Unmapped high-address kernel/user region
+0x3FFFFF7000  0x0         0x0   Unmapped
+0x3FFFFF8000  0x0         0x0   Unmapped
+0x3FFFFF9000  0x0         0x0   Unmapped
+0x3FFFFFA000  0x0         0x0   Unmapped
+0x3FFFFFB000  0x0         0x0   Unmapped
+0x3FFFFFC000  0x0         0x0   Unmapped
+0x3FFFFFD000  0x0         0x0   Unmapped
+0x3FFFFFE000  0x87F42000  0xC7  Kernel stack/trapframe; readable, writable, executable, valid; kernel only
+0x3FFFFFF000  0x80006000  0x4B  Kernel trampoline/code page; readable, executable, user-accessible

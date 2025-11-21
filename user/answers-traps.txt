@@ -1,0 +1,20 @@
+
+RISC-V passes function arguments in registers a0–a7.
+ The first argument goes in a0, the second in a1, etc. 
+So in main when calling printf with the first argument being 13, that 13 will be placed in a0 before the jalr to printf.
+
+
+call.c, the compiler usually inlines both f and g because they are small. That means there is no jal or jalr instruction for calling f or g; instead, their logic appears directly inside main inlined. So you won’t find a normal function call instruction for them in call.asm.
+
+
+In xv6, user programs get linked with a static user library, so printf has a fixed address in the loaded image. You can find it in call.asm by locating the label printf:. The answer is simply that memory address (e.g., something like 0x0000000000000xxx, depending on your build). You just copy the address shown before the printf: label.
+
+
+ra (return address register x1) will contain the address of the instruction immediately after the jalr, meaning the address in main where execution should resume once printf returns. So the answer is just: the next instruction’s address.
+
+
+Little-endian stores bytes reversed in memory, so 0x00 64 6c 72 in memory becomes characters 'r' 'l' 'd' '\0'.
+Thus the output is: He110 Wo rld
+
+
+The value printed after y= is an unpredictable garbage value. This happens because printf("x=%d y=%d", 3) supplies only one argument (3), but the format string asks for two integers. printf will try to read a second argument from register a1, which contains whatever leftover value happened to be inside it. That makes the result undefined

@@ -81,9 +81,26 @@ usertrap(void)
     kexit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
-    yield();
+  if(which_dev == 2) {
+struct proc *p = myproc();
+  if (p && p->alarm_interval > 0) {
+    if (!p->in_alarm) {                     // prevent nested alarms (test2)
+      p->alarm_ticks++;
 
+      if (p->alarm_ticks >= p->alarm_interval) {
+        // Save full trapframe before we modify anything
+        p->alarm_tf = *p->trapframe;
+
+        // Next time we return to user space, start executing at handler
+        p->trapframe->epc = p->alarm_handler;
+
+        p->in_alarm = 1;                    // now inside handler
+        p->alarm_ticks = 0;                 // reset count for next period
+      }
+    }
+}
+    yield();
+}
   prepare_return();
 
   // the user page table to switch to, for trampoline.S

@@ -81,7 +81,10 @@ sys_pause(void)
     sleep(&ticks, &tickslock);
   }
   release(&tickslock);
+  backtrace();
   return 0;
+
+
 }
 
 uint64
@@ -104,4 +107,38 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+uint64
+sys_sigalarm(void)
+{
+  int ticks;
+  uint64 handler;
+  struct proc *p = myproc();
+  argint(0, &ticks);          // no if (<0) check here
+  argaddr(1, &handler);
+  p->alarm_interval = ticks;
+  p->alarm_handler  = handler;
+  p->alarm_ticks    = 0;
+  // Optional: clear in_alarm when (re)setting
+  // p->in_alarm = 0;
+
+  return 0;
+}
+
+uint64
+sys_sigreturn(void)
+{
+  struct proc *p = myproc();
+
+  // Save the original a0 value from the saved trapframe
+  uint64 old_a0 = p->alarm_tf.a0;
+
+  // Restore *all* registers, including a0, epc, etc.
+  *p->trapframe = p->alarm_tf;
+
+  p->in_alarm = 0;      // allow future alarms
+
+  // Make syscall() write old_a0 into trapframe->a0
+  return old_a0;
 }
