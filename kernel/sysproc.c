@@ -6,6 +6,60 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "vm.h"
+#include "procinfo.h"
+
+extern struct proc proc[NPROC];
+
+extern void mlfq_boost(void);
+extern struct spinlock tickslock;
+extern uint ticks;
+
+
+uint64
+sys_boostproc(void)
+{
+  mlfq_boost();
+  return 0;
+}
+
+
+uint64
+sys_getprocinfo(void)
+{
+  int pid;
+  uint64 uaddr;   // user pointer to struct procinfo
+  struct procinfo info;
+  struct proc *p;
+  int found = 0;
+
+argint(0, &pid);
+  argaddr(1, &uaddr);
+  // search process table
+  for (p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if (p->pid == pid) {
+      info.pid      = p->pid;
+      info.state    = p->state;
+      info.priority = p->priority;
+      for (int i = 0; i < NQUEUE; i++)
+        info.total_ticks_per_queue[i] = p->total_ticks_per_queue[i];
+      found = 1;
+      release(&p->lock);
+      break;
+    }
+    release(&p->lock);
+  }
+
+  if (!found)
+    return -1;
+
+  // copy result to user space
+  struct proc *me = myproc();
+  if (copyout(me->pagetable, uaddr, (char *)&info, sizeof(info)) < 0)
+    return -1;
+
+  return 0;
+}
 
 uint64
 sys_exit(void)
@@ -88,6 +142,32 @@ sys_pause(void)
 }
 
 uint64
+sys_sleep(void)
+{
+  int n;
+  uint ticks0;
+
+  argint(0, &n);
+
+  if (n < 0)
+    n = 0;
+
+  acquire(&tickslock);
+  ticks0 = ticks;
+  while (ticks - ticks0 < (uint)n) {
+    if (killed(myproc())) {
+      release(&tickslock);
+      return -1;
+    }
+    sleep(&ticks, &tickslock);  // kernel sleep(chan, lock)
+  }
+  release(&tickslock);
+  return 0;
+}
+
+
+
+uint64
 sys_kill(void)
 {
   int pid;
@@ -142,3 +222,4 @@ sys_sigreturn(void)
   // Make syscall() write old_a0 into trapframe->a0
   return old_a0;
 }
+

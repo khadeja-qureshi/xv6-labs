@@ -81,6 +81,10 @@ struct trapframe {
 
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+
+// Priority boosting for MLFQ
+void mlfq_boost(void);
+
 // Per-process state
 struct proc {
   struct spinlock lock;
@@ -109,5 +113,9 @@ struct proc {
   struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
-  char name[16];               // Process name (debugging)
+  char name[16];
+int priority;               // Process name (debugging)
+int ticks_in_current_slice;
+ uint64 total_ticks_per_queue[NQUEUE]; // stats per queue
+
 };

@@ -16,6 +16,9 @@ void kernelvec();
 
 extern int devintr();
 
+// MLFQ: time quanta per level (can be tuned)
+static int queue_quanta[NQUEUE] = {1, 2, 4, 8};
+
 void
 trapinit(void)
 {
@@ -47,10 +50,10 @@ usertrap(void)
   w_stvec((uint64)kernelvec);  //DOC: kernelvec
 
   struct proc *p = myproc();
-  
+
   // save user program counter.
   p->trapframe->epc = r_sepc();
-  
+
   if(r_scause() == 8){
     // system call
 
@@ -67,7 +70,8 @@ usertrap(void)
 
     syscall();
   } else if((which_dev = devintr()) != 0){
-    // ok
+    // device interrupt (timer, uart, disk, ...)
+    // handled below for timer (which_dev == 2)
   } else if((r_scause() == 15 || r_scause() == 13) &&
             vmfault(p->pagetable, r_stval(), (r_scause() == 13)? 1 : 0) != 0) {
     // page fault on lazily-allocated page
@@ -82,25 +86,51 @@ usertrap(void)
 
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2) {
-struct proc *p = myproc();
-  if (p && p->alarm_interval > 0) {
-    if (!p->in_alarm) {                     // prevent nested alarms (test2)
-      p->alarm_ticks++;
+    // MLFQ: account time and handle demotion
+    struct proc *p = myproc();
+    if (p && p->state == RUNNING) {
+      // Count this tick in the current queue
+      p->ticks_in_current_slice++;
+      p->total_ticks_per_queue[p->priority]++;
 
-      if (p->alarm_ticks >= p->alarm_interval) {
-        // Save full trapframe before we modify anything
-        p->alarm_tf = *p->trapframe;
-
-        // Next time we return to user space, start executing at handler
-        p->trapframe->epc = p->alarm_handler;
-
-        p->in_alarm = 1;                    // now inside handler
-        p->alarm_ticks = 0;                 // reset count for next period
+      // Time slice used up? Demote if not at lowest level
+      if(p->ticks_in_current_slice >= queue_quanta[p->priority]) {
+        p->ticks_in_current_slice = 0;
+        if(p->priority < NQUEUE - 1) {
+          p->priority++;
+        }
       }
     }
-}
+
+    // Alarm lab logic (keep your existing behavior)
+    if (p && p->alarm_interval > 0) {
+      if (!p->in_alarm) {                     // prevent nested alarms (test2)
+        p->alarm_ticks++;
+
+        if (p->alarm_ticks >= p->alarm_interval) {
+          // Save full trapframe before we modify anything
+          p->alarm_tf = *p->trapframe;
+
+          // Next time we return to user space, start executing at handler
+          p->trapframe->epc = p->alarm_handler;
+
+          p->in_alarm = 1;                    // now inside handler
+          p->alarm_ticks = 0;                 // reset count for next period
+        }
+      }
+    }
+
+    // Priority boosting: every BOOST_INTERVAL ticks,
+    // move all processes back to top queue.
+    if (ticks % BOOST_INTERVAL == 0) {
+      mlfq_boost();
+    }
+
+
+    // Preempt current process
     yield();
-}
+  }
+
   prepare_return();
 
   // the user page table to switch to, for trampoline.S
@@ -136,7 +166,7 @@ prepare_return(void)
 
   // set up the registers that trampoline.S's sret will use
   // to get to user space.
-  
+
   // set S Previous Privilege mode to User.
   unsigned long x = r_sstatus();
   x &= ~SSTATUS_SPP; // clear SPP to 0 for user mode
@@ -156,7 +186,7 @@ kerneltrap()
   uint64 sepc = r_sepc();
   uint64 sstatus = r_sstatus();
   uint64 scause = r_scause();
-  
+
   if((sstatus & SSTATUS_SPP) == 0)
     panic("kerneltrap: not from supervisor mode");
   if(intr_get() != 0)
@@ -233,4 +263,3 @@ devintr()
     return 0;
   }
 }
-

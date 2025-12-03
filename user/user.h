@@ -1,6 +1,13 @@
 #define SBRK_ERROR ((char *)-1)
-
+#define NQUEUE 4
 struct stat;
+
+struct procinfo {
+  int pid;
+  int state;
+  int priority;
+  uint64 total_ticks_per_queue[NQUEUE];
+};
 
 // system calls
 int fork(void);
@@ -26,6 +33,10 @@ int pause(int);
 int uptime(void);
 int sigalarm(int ticks, void (*handler)());
 int sigreturn(void);
+
+int getprocinfo(int pid, struct procinfo *info);
+int boostproc(void);
+int sleep(int);
 
 // ulib.c
 int stat(const char*, struct stat*);

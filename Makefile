@@ -197,7 +197,13 @@ UPROGS=\
 	$U/_forphan\
 	$U/_dorphan\
         $U/_alarmtest\
-
+        $U/_getprocinfo\
+        $U/_cpu_hog\
+        $U/_mlfq_demo\
+        $U/_yield_test\
+        $U/_io_demo\
+        $U/_boostproc_test\
+        $U/_long_hog\
 
 ifeq ($(LAB),util)
 UPROGS += \
